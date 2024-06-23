@@ -1,0 +1,31 @@
+- id: Python
+  message: License error. Invalid license text "py"
+  glob:
+    - "**/*.py"
+  exclude:
+    - "test/change.py"
+  pattern:
+    literal: |
+      # Copyright © {{ .year }} {{ .company }}. All rights reserved.
+
+      # No part of this text may be reproduced, distributed,
+      # or used in any form or by any means without the written
+
+      # permission of the copyright owner.
+  vars:
+    year: "2024"
+    company: "Example"
+
+- id: Golang
+  glob:
+    - "**/*.go"
+  exclude:
+    - "main.go"
+  pattern:
+    literal: |
+      /* Copyright © 2024 Example. All rights reserved.
+
+      No part of this text may be reproduced, distributed,
+      or used in any form or by any means without the written
+
+      permission of the copyright owner. */

@@ -1,0 +1,8 @@
+# Copyright © 2024 Example. All rights reserved.
+
+# No part of this text may be reproduced, distributed,
+# or used in any form or by any means without the written
+
+# permission of the copyright owner.
+
+echo("How are you?")
