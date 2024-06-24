@@ -1,5 +1,7 @@
 # Copyright Checker
 
+![alt text](copyright_checker.png)
+
 The Copyright Checker is a powerful tool written in Go that helps you ensure the consistency of copyright notices across your project's files. It allows you to define patterns for copyright text and check if they match the files in your project, providing a convenient way to maintain proper copyright attribution.
 
 ## Features
