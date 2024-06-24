@@ -54,9 +54,7 @@ func MatchLicenseText(filesGlob []string, filesGlobExclude []string, copyrightSt
 			return formatError(err)
 		}
 
-		if strings.Contains(string(fileText), copyrightString) {
-			err = nil
-		} else {
+		if !strings.Contains(string(fileText), copyrightString) {
 			filesNoMatchedPattern = append(filesNoMatchedPattern, file)
 		}
 	}
