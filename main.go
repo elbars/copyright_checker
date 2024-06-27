@@ -13,7 +13,7 @@ import (
 	"github.com/spf13/cobra"
 )
 
-func ApplyExitOnHelp(cmd *cobra.Command) {
+func applyExitOnHelp(cmd *cobra.Command) {
 	helpFunc := cmd.HelpFunc()
 	cmd.SetHelpFunc(func(cmd *cobra.Command, args []string) {
 		helpFunc(cmd, args)
@@ -21,7 +21,7 @@ func ApplyExitOnHelp(cmd *cobra.Command) {
 	})
 }
 
-var errStrings []string
+var errorLogMessages []string
 
 func main() {
 	log.SetFlags(0)
@@ -31,21 +31,21 @@ func main() {
 		Short: "Path to config",
 		Run:   func(cmd *cobra.Command, args []string) {},
 	}
-	ApplyExitOnHelp(rootCmd)
+	applyExitOnHelp(rootCmd)
 
-	confPathDef := "config/config.yaml"
+	defaultConfigPath := "config/config.yaml"
 
-	var confPathArg, filesGlobArg, filesGlobExcludeArg, messageArg, filesPatternArg, templateData string
-	rootCmd.Flags().StringVarP(&confPathArg, "config", "c", confPathDef, "Сonfig path")
-	rootCmd.Flags().StringVar(&filesGlobArg, "filesglob", "**", "Files glob to check")
-	rootCmd.Flags().StringVar(&filesGlobExcludeArg, "filesglobexclude", "", "Files glob to exclude")
-	rootCmd.Flags().StringVar(&messageArg, "message", "", "Message to print")
-	rootCmd.Flags().StringVar(&filesPatternArg, "filespattern", "", "Files pattern to check")
-	rootCmd.Flags().StringVar(&templateData, "templatedata", "", "Key value pairs for template")
+	var configPath, fileGlobPattern, fileGlobExcludePattern, errorMessageText, filePatternPath, templateDataJSON string
+	rootCmd.Flags().StringVarP(&configPath, "config", "c", defaultConfigPath, "Сonfig path")
+	rootCmd.Flags().StringVar(&fileGlobPattern, "filesglob", "**", "Files glob to check")
+	rootCmd.Flags().StringVar(&fileGlobExcludePattern, "filesglobexclude", "", "Files glob to exclude")
+	rootCmd.Flags().StringVar(&errorMessageText, "message", "", "Message to print")
+	rootCmd.Flags().StringVar(&filePatternPath, "filespattern", "", "Files pattern to check")
+	rootCmd.Flags().StringVar(&templateDataJSON, "templatedata", "", "Key value pairs for template")
 
 	if err := rootCmd.Execute(); err != nil {
-		errStrings = append(errStrings, err.Error())
-		logformatter.LogError(errStrings)
+		errorLogMessages = append(errorLogMessages, err.Error())
+		logformatter.LogError(errorLogMessages)
 	}
 
 	var config *conf.Conf
@@ -53,34 +53,34 @@ func main() {
 	var err error
 	var patternFile []byte
 
-	if filesGlobArg != "**" || filesGlobExcludeArg != "" {
+	if fileGlobPattern != "**" || fileGlobExcludePattern != "" {
 		filesGlob := []string{}
 
-		filesGlob = append(filesGlob, strings.Split(filesGlobArg, " ")...)
+		filesGlob = append(filesGlob, strings.Split(fileGlobPattern, " ")...)
 
-		if filesPatternArg != "" {
-			patternFile, err = os.ReadFile(filesPatternArg)
+		if filePatternPath != "" {
+			patternFile, err = os.ReadFile(filePatternPath)
 		} else {
-			errStrings = append(errStrings, "A variable 'filesPatternArg' with arguments must be declared")
-			logformatter.LogError(errStrings)
+			errorLogMessages = append(errorLogMessages, "A variable 'filePatternPath' with arguments must be declared")
+			logformatter.LogError(errorLogMessages)
 		}
 
 		if err != nil {
-			errStrings = append(errStrings, err.Error())
-			logformatter.LogError(errStrings)
+			errorLogMessages = append(errorLogMessages, err.Error())
+			logformatter.LogError(errorLogMessages)
 		}
 
 		var data map[string]interface{}
-		if templateData != "" {
-			err = json.Unmarshal([]byte(templateData), &data)
+		if templateDataJSON != "" {
+			err = json.Unmarshal([]byte(templateDataJSON), &data)
 			if err != nil {
-				errStrings = append(errStrings, err.Error())
-				logformatter.LogError(errStrings)
+				errorLogMessages = append(errorLogMessages, err.Error())
+				logformatter.LogError(errorLogMessages)
 			}
 		}
 
 		filesGlobExclude := []string{}
-		filesGlobExclude = append(filesGlobExclude, strings.Split(filesGlobExcludeArg, " ")...)
+		filesGlobExclude = append(filesGlobExclude, strings.Split(fileGlobExcludePattern, " ")...)
 		patternFileStr := string(patternFile)
 
 		pattern = &conf.Pattern{
@@ -90,7 +90,7 @@ func main() {
 		config = &conf.Conf{
 			{
 				ID:      "example_id",
-				Message: messageArg,
+				Message: errorMessageText,
 				Glob:    filesGlob,
 				Exclude: filesGlobExclude,
 				Pattern: *pattern,
@@ -98,18 +98,18 @@ func main() {
 			},
 		}
 	} else {
-		config, err = conf.GetConf(confPathArg)
+		config, err = conf.GetConf(configPath)
 	}
 
 	if err != nil {
-		errStrings = append(errStrings, err.Error())
-		logformatter.LogError(errStrings)
+		errorLogMessages = append(errorLogMessages, err.Error())
+		logformatter.LogError(errorLogMessages)
 	}
 
 	err = conf.CheckConfFields(*config)
 	if err != nil {
-		errStrings = append(errStrings, err.Error())
-		logformatter.LogError(errStrings)
+		errorLogMessages = append(errorLogMessages, err.Error())
+		logformatter.LogError(errorLogMessages)
 	}
 
 	for _, c := range *config {
@@ -123,21 +123,22 @@ func main() {
 		}
 		pattern := c.Pattern.Literal
 
-		patternTemplate, err := templating.PrepareTeamplate(pattern, varsTemplate)
+
+		expectedText, err := templating.PrepareTemplatedText(pattern, varsTemplate)
 		if err != nil {
-			errStrings = append(errStrings, err.Error())
-			logformatter.LogError(errStrings)
+			errorLogMessages = append(errorLogMessages, err.Error())
+			logformatter.LogError(errorLogMessages)
 		}
 
-		err = matcher.MatchLicenseText(filesGlob, filesGlobExclude, patternTemplate, errMessage)
+		err = matcher.MatchLicenseText(filesGlob, filesGlobExclude, expectedText, errMessage)
 		if err != nil {
-			errStrings = append(errStrings, err.Error())
+			errorLogMessages = append(errorLogMessages, err.Error())
 		}
 
 	}
 
-	if len(errStrings) > 0 {
-		logformatter.LogError(errStrings)
+	if len(errorLogMessages) > 0 {
+		logformatter.LogError(errorLogMessages)
 	}
 
 	log.Println("All files successfully matched with the license")
