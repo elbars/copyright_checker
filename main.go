@@ -13,7 +13,7 @@ import (
 	"github.com/spf13/cobra"
 )
 
-func applyExitOnHelp(cmd *cobra.Command) {
+func wrapHelpFunctionWithExit(cmd *cobra.Command) {
 	helpFunc := cmd.HelpFunc()
 	cmd.SetHelpFunc(func(cmd *cobra.Command, args []string) {
 		helpFunc(cmd, args)
@@ -31,7 +31,7 @@ func main() {
 		Short: "Path to config",
 		Run:   func(cmd *cobra.Command, args []string) {},
 	}
-	applyExitOnHelp(rootCmd)
+	wrapHelpFunctionWithExit(rootCmd)
 
 	defaultConfigPath := "config/config.yaml"
 
