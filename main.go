@@ -48,18 +48,18 @@ func main() {
 		logformatter.LogError(errorLogMessages)
 	}
 
-	var config *conf.Conf
-	var pattern *conf.Pattern
+	var configuration *conf.Conf
+	var filePattern *conf.Pattern
 	var err error
-	var patternFile []byte
+	var patternFileBytes []byte
 
 	if fileGlobPattern != "**" || fileGlobExcludePattern != "" {
-		filesGlob := []string{}
+		fileGlobPatterns := []string{}
 
-		filesGlob = append(filesGlob, strings.Split(fileGlobPattern, " ")...)
+		fileGlobPatterns = append(fileGlobPatterns, strings.Split(fileGlobPattern, " ")...)
 
 		if filePatternPath != "" {
-			patternFile, err = os.ReadFile(filePatternPath)
+			patternFileBytes, err = os.ReadFile(filePatternPath)
 		} else {
 			errorLogMessages = append(errorLogMessages, "A variable 'filePatternPath' with arguments must be declared")
 			logformatter.LogError(errorLogMessages)
@@ -70,35 +70,35 @@ func main() {
 			logformatter.LogError(errorLogMessages)
 		}
 
-		var data map[string]interface{}
+		var templateData map[string]interface{}
 		if templateDataJSON != "" {
-			err = json.Unmarshal([]byte(templateDataJSON), &data)
+			err = json.Unmarshal([]byte(templateDataJSON), &templateData)
 			if err != nil {
 				errorLogMessages = append(errorLogMessages, err.Error())
 				logformatter.LogError(errorLogMessages)
 			}
 		}
 
-		filesGlobExclude := []string{}
-		filesGlobExclude = append(filesGlobExclude, strings.Split(fileGlobExcludePattern, " ")...)
-		patternFileStr := string(patternFile)
+		fileGlobExcludePatterns := []string{}
+		fileGlobExcludePatterns = append(fileGlobExcludePatterns, strings.Split(fileGlobExcludePattern, " ")...)
+		patternFileStr := string(patternFileBytes)
 
-		pattern = &conf.Pattern{
+		filePattern = &conf.Pattern{
 			Literal: patternFileStr,
 		}
 
-		config = &conf.Conf{
+		configuration = &conf.Conf{
 			{
 				ID:      "example_id",
 				Message: errorMessageText,
-				Glob:    filesGlob,
-				Exclude: filesGlobExclude,
-				Pattern: *pattern,
-				Vars:    data,
+				Glob:    fileGlobPatterns,
+				Exclude: fileGlobExcludePatterns,
+				Pattern: *filePattern,
+				Vars:    templateData,
 			},
 		}
 	} else {
-		config, err = conf.GetConf(configPath)
+		configuration, err = conf.GetConf(configPath)
 	}
 
 	if err != nil {
@@ -106,31 +106,30 @@ func main() {
 		logformatter.LogError(errorLogMessages)
 	}
 
-	err = conf.CheckConfFields(*config)
+	err = conf.CheckConfFields(*configuration)
 	if err != nil {
 		errorLogMessages = append(errorLogMessages, err.Error())
 		logformatter.LogError(errorLogMessages)
 	}
 
-	for _, c := range *config {
-		filesGlob := c.Glob
-		filesGlobExclude := c.Exclude
-		errMessage := c.Message
-		varsTemplate := c.Vars
+	for _, configItem := range *configuration {
+		fileGlobPatterns := configItem.Glob
+		fileGlobExcludePatterns := configItem.Exclude
+		errorMessageText := configItem.Message
+		templateData := configItem.Vars
 
-		if errMessage == "" {
-			errMessage = "Copyright text not matching"
+		if errorMessageText == "" {
+			errorMessageText = "Copyright text not matching"
 		}
-		pattern := c.Pattern.Literal
+		filePatternLiteral := configItem.Pattern.Literal
 
-
-		expectedText, err := templating.PrepareTemplatedText(pattern, varsTemplate)
+		expectedText, err := templating.PrepareTemplatedText(filePatternLiteral, templateData)
 		if err != nil {
 			errorLogMessages = append(errorLogMessages, err.Error())
 			logformatter.LogError(errorLogMessages)
 		}
 
-		err = matcher.MatchLicenseText(filesGlob, filesGlobExclude, expectedText, errMessage)
+		err = matcher.MatchLicenseText(fileGlobPatterns, fileGlobExcludePatterns, expectedText, errorMessageText)
 		if err != nil {
 			errorLogMessages = append(errorLogMessages, err.Error())
 		}
