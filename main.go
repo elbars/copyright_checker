@@ -13,7 +13,7 @@ import (
 	"github.com/spf13/cobra"
 )
 
-func ApplyExitOnHelp(cmd *cobra.Command) {
+func wrapHelpFunctionWithExit(cmd *cobra.Command) {
 	helpFunc := cmd.HelpFunc()
 	cmd.SetHelpFunc(func(cmd *cobra.Command, args []string) {
 		helpFunc(cmd, args)
@@ -21,7 +21,7 @@ func ApplyExitOnHelp(cmd *cobra.Command) {
 	})
 }
 
-var errStrings []string
+var errorLogMessages []string
 
 func main() {
 	log.SetFlags(0)
@@ -31,113 +31,113 @@ func main() {
 		Short: "Path to config",
 		Run:   func(cmd *cobra.Command, args []string) {},
 	}
-	ApplyExitOnHelp(rootCmd)
+	wrapHelpFunctionWithExit(rootCmd)
 
-	confPathDef := "config/config.yaml"
+	defaultConfigPath := "config/config.yaml"
 
-	var confPathArg, filesGlobArg, filesGlobExcludeArg, messageArg, filesPatternArg, templateData string
-	rootCmd.Flags().StringVarP(&confPathArg, "config", "c", confPathDef, "Сonfig path")
-	rootCmd.Flags().StringVar(&filesGlobArg, "filesglob", "**", "Files glob to check")
-	rootCmd.Flags().StringVar(&filesGlobExcludeArg, "filesglobexclude", "", "Files glob to exclude")
-	rootCmd.Flags().StringVar(&messageArg, "message", "", "Message to print")
-	rootCmd.Flags().StringVar(&filesPatternArg, "filespattern", "", "Files pattern to check")
-	rootCmd.Flags().StringVar(&templateData, "templatedata", "", "Key value pairs for template")
+	var configPath, fileGlobPattern, fileGlobExcludePattern, errorMessageText, filePatternPath, templateDataJSON string
+	rootCmd.Flags().StringVarP(&configPath, "config", "c", defaultConfigPath, "Сonfig path")
+	rootCmd.Flags().StringVar(&fileGlobPattern, "filesglob", "**", "Files glob to check")
+	rootCmd.Flags().StringVar(&fileGlobExcludePattern, "filesglobexclude", "", "Files glob to exclude")
+	rootCmd.Flags().StringVar(&errorMessageText, "message", "", "Message to print")
+	rootCmd.Flags().StringVar(&filePatternPath, "filespattern", "", "Files pattern to check")
+	rootCmd.Flags().StringVar(&templateDataJSON, "templatedata", "", "Key value pairs for template")
 
 	if err := rootCmd.Execute(); err != nil {
-		errStrings = append(errStrings, err.Error())
-		logformatter.LogError(errStrings)
+		errorLogMessages = append(errorLogMessages, err.Error())
+		logformatter.LogError(errorLogMessages)
 	}
 
-	var config *conf.Conf
-	var pattern *conf.Pattern
+	var configuration *conf.Conf
+	var filePattern *conf.Pattern
 	var err error
-	var patternFile []byte
+	var patternFileBytes []byte
 
-	if filesGlobArg != "**" || filesGlobExcludeArg != "" {
-		filesGlob := []string{}
+	if fileGlobPattern != "**" || fileGlobExcludePattern != "" {
+		fileGlobPatterns := []string{}
 
-		filesGlob = append(filesGlob, strings.Split(filesGlobArg, " ")...)
+		fileGlobPatterns = append(fileGlobPatterns, strings.Split(fileGlobPattern, " ")...)
 
-		if filesPatternArg != "" {
-			patternFile, err = os.ReadFile(filesPatternArg)
+		if filePatternPath != "" {
+			patternFileBytes, err = os.ReadFile(filePatternPath)
 		} else {
-			errStrings = append(errStrings, "A variable 'filesPatternArg' with arguments must be declared")
-			logformatter.LogError(errStrings)
+			errorLogMessages = append(errorLogMessages, "A variable 'filePatternPath' with arguments must be declared")
+			logformatter.LogError(errorLogMessages)
 		}
 
 		if err != nil {
-			errStrings = append(errStrings, err.Error())
-			logformatter.LogError(errStrings)
+			errorLogMessages = append(errorLogMessages, err.Error())
+			logformatter.LogError(errorLogMessages)
 		}
 
-		var data map[string]interface{}
-		if templateData != "" {
-			err = json.Unmarshal([]byte(templateData), &data)
+		var templateData map[string]interface{}
+		if templateDataJSON != "" {
+			err = json.Unmarshal([]byte(templateDataJSON), &templateData)
 			if err != nil {
-				errStrings = append(errStrings, err.Error())
-				logformatter.LogError(errStrings)
+				errorLogMessages = append(errorLogMessages, err.Error())
+				logformatter.LogError(errorLogMessages)
 			}
 		}
 
-		filesGlobExclude := []string{}
-		filesGlobExclude = append(filesGlobExclude, strings.Split(filesGlobExcludeArg, " ")...)
-		patternFileStr := string(patternFile)
+		fileGlobExcludePatterns := []string{}
+		fileGlobExcludePatterns = append(fileGlobExcludePatterns, strings.Split(fileGlobExcludePattern, " ")...)
+		patternFileStr := string(patternFileBytes)
 
-		pattern = &conf.Pattern{
+		filePattern = &conf.Pattern{
 			Literal: patternFileStr,
 		}
 
-		config = &conf.Conf{
+		configuration = &conf.Conf{
 			{
 				ID:      "example_id",
-				Message: messageArg,
-				Glob:    filesGlob,
-				Exclude: filesGlobExclude,
-				Pattern: *pattern,
-				Vars:    data,
+				Message: errorMessageText,
+				Glob:    fileGlobPatterns,
+				Exclude: fileGlobExcludePatterns,
+				Pattern: *filePattern,
+				Vars:    templateData,
 			},
 		}
 	} else {
-		config, err = conf.GetConf(confPathArg)
+		configuration, err = conf.GetConf(configPath)
 	}
 
 	if err != nil {
-		errStrings = append(errStrings, err.Error())
-		logformatter.LogError(errStrings)
+		errorLogMessages = append(errorLogMessages, err.Error())
+		logformatter.LogError(errorLogMessages)
 	}
 
-	err = conf.CheckConfFields(*config)
+	err = conf.CheckConfFields(*configuration)
 	if err != nil {
-		errStrings = append(errStrings, err.Error())
-		logformatter.LogError(errStrings)
+		errorLogMessages = append(errorLogMessages, err.Error())
+		logformatter.LogError(errorLogMessages)
 	}
 
-	for _, c := range *config {
-		filesGlob := c.Glob
-		filesGlobExclude := c.Exclude
-		errMessage := c.Message
-		varsTemplate := c.Vars
+	for _, configItem := range *configuration {
+		fileGlobPatterns := configItem.Glob
+		fileGlobExcludePatterns := configItem.Exclude
+		errorMessageText := configItem.Message
+		templateData := configItem.Vars
 
-		if errMessage == "" {
-			errMessage = "Copyright text not matching"
+		if errorMessageText == "" {
+			errorMessageText = "Copyright text not matching"
 		}
-		pattern := c.Pattern.Literal
+		filePatternLiteral := configItem.Pattern.Literal
 
-		patternTemplate, err := templating.PrepareTeamplate(pattern, varsTemplate)
+		expectedText, err := templating.PrepareTemplatedText(filePatternLiteral, templateData)
 		if err != nil {
-			errStrings = append(errStrings, err.Error())
-			logformatter.LogError(errStrings)
+			errorLogMessages = append(errorLogMessages, err.Error())
+			logformatter.LogError(errorLogMessages)
 		}
 
-		err = matcher.MatchLicenseText(filesGlob, filesGlobExclude, patternTemplate, errMessage)
+		err = matcher.MatchLicenseText(fileGlobPatterns, fileGlobExcludePatterns, expectedText, errorMessageText)
 		if err != nil {
-			errStrings = append(errStrings, err.Error())
+			errorLogMessages = append(errorLogMessages, err.Error())
 		}
 
 	}
 
-	if len(errStrings) > 0 {
-		logformatter.LogError(errStrings)
+	if len(errorLogMessages) > 0 {
+		logformatter.LogError(errorLogMessages)
 	}
 
 	log.Println("All files successfully matched with the license")
