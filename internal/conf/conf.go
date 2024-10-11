@@ -38,9 +38,9 @@ func GetConf(configFileParh string) (*Conf, error) {
 
 var validate *validator.Validate
 
-func CheckConfFields(configStruct Conf) error {
+func CheckConfFields(configStruct *Conf) error {
 
-	for _, c := range configStruct {
+	for _, c := range *configStruct {
 
 		validate = validator.New(validator.WithRequiredStructEnabled())
 		err := validate.Struct(c)
