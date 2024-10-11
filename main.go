@@ -106,7 +106,7 @@ func main() {
 		logformatter.LogError(errorLogMessages)
 	}
 
-	err = conf.CheckConfFields(*configuration)
+	err = conf.CheckConfFields(configuration)
 	if err != nil {
 		errorLogMessages = append(errorLogMessages, err.Error())
 		logformatter.LogError(errorLogMessages)
